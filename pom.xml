@@ -11,8 +11,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j.version>1.7.21</slf4j.version>
-        <akka.version>2.4.9</akka.version>
-        <scala.version>2.11</scala.version>
+        <akka.version>2.5.7</akka.version>
+        <scala.version>2.12</scala.version>
     </properties>
 
     <build>
@@ -107,17 +107,7 @@
 
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-actor_${scala.version}</artifactId>
-            <version>${akka.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-slf4j_${scala.version}</artifactId>
-            <version>${akka.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-persistence_${scala.version}</artifactId>
             <version>${akka.version}</version>
         </dependency>
         <dependency>

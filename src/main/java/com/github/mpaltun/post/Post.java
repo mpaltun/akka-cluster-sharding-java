@@ -1,36 +1,20 @@
 package com.github.mpaltun.post;
 
-import static com.google.common.base.Strings.isNullOrEmpty;
-import static java.util.concurrent.TimeUnit.MINUTES;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.github.mpaltun.author.ImmutablePostSummary;
-import com.github.mpaltun.post.command.ChangeBody;
-import com.github.mpaltun.post.command.CreatePost;
-import com.github.mpaltun.post.command.GetContent;
-import com.github.mpaltun.post.command.PostCommand;
-import com.github.mpaltun.post.command.PostContent;
-import com.github.mpaltun.post.command.PublishPost;
-import com.github.mpaltun.post.event.BodyChanged;
-import com.github.mpaltun.post.event.Event;
-import com.github.mpaltun.post.event.ImmutableBodyChanged;
-import com.github.mpaltun.post.event.ImmutablePostCreated;
-import com.github.mpaltun.post.event.ImmutablePostPublished;
-import com.github.mpaltun.post.event.PostCreated;
-import com.github.mpaltun.post.event.PostPublished;
-
 import akka.actor.ActorRef;
 import akka.actor.PoisonPill;
 import akka.actor.Props;
 import akka.actor.ReceiveTimeout;
 import akka.cluster.sharding.ShardRegion;
-import akka.japi.pf.ReceiveBuilder;
 import akka.persistence.AbstractPersistentActor;
-import scala.PartialFunction;
+import com.github.mpaltun.author.ImmutablePostSummary;
+import com.github.mpaltun.post.command.*;
+import com.github.mpaltun.post.event.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.concurrent.duration.Duration;
-import scala.runtime.BoxedUnit;
+
+import static com.google.common.base.Strings.isNullOrEmpty;
+import static java.util.concurrent.TimeUnit.MINUTES;
 
 public final class Post extends AbstractPersistentActor {
 
@@ -53,26 +37,26 @@ public final class Post extends AbstractPersistentActor {
     public void unhandled(Object message) {
         if (message instanceof ReceiveTimeout) {
             context().parent().tell(new ShardRegion.Passivate(PoisonPill.getInstance()), self());
-        }
-        else {
+        } else {
             super.unhandled(message);
         }
     }
 
     @Override
-    public PartialFunction<Object, BoxedUnit> receiveRecover() {
-        return ReceiveBuilder.match(PostCreated.class, this::addPost)
-                             .match(PostPublished.class, this::publishPost)
-                             .match(Event.class, this::handleEvent)
-                             .build();
+    public Receive createReceiveRecover() {
+        return receiveBuilder()
+                .match(PostCreated.class, this::addPost)
+                .match(PostPublished.class, this::publishPost)
+                .match(Event.class, this::handleEvent)
+                .build();
     }
 
     @Override
-    public PartialFunction<Object, BoxedUnit> receiveCommand() {
-        return ReceiveBuilder.match(GetContent.class, this::handleGetContent)
-                             .match(CreatePost.class, this::handleCreatePost)
-                             .build();
-
+    public Receive createReceive() {
+        return receiveBuilder()
+                .match(GetContent.class, this::handleGetContent)
+                .match(CreatePost.class, this::handleCreatePost)
+                .build();
     }
 
     @Override
@@ -88,15 +72,18 @@ public final class Post extends AbstractPersistentActor {
         return Props.create(Post.class, () -> new Post(authorListing));
     }
 
-    private PartialFunction<Object, BoxedUnit> created() {
-        return ReceiveBuilder.match(GetContent.class, this::handleGetContent)
-                             .match(ChangeBody.class, this::handleChangeBody)
-                             .match(PublishPost.class, this::handlePublish)
-                             .build();
+    private Receive created() {
+        return receiveBuilder()
+                .match(GetContent.class, this::handleGetContent)
+                .match(ChangeBody.class, this::handleChangeBody)
+                .match(PublishPost.class, this::handlePublish)
+                .build();
     }
 
-    private PartialFunction<Object, BoxedUnit> published() {
-        return ReceiveBuilder.match(GetContent.class, this::handleGetContent).build();
+    private Receive published() {
+        return receiveBuilder()
+                .match(GetContent.class, this::handleGetContent)
+                .build();
     }
 
     private void handlePublish(PublishPost command) {
@@ -122,12 +109,12 @@ public final class Post extends AbstractPersistentActor {
     }
 
     private void handleGetContent(GetContent ignored) {
-        sender().tell(state.content(), self());
+        getSender().tell(state.content(), self());
     }
 
     private void addPost(PostCreated event) {
         state = state.updated(event);
-        context().become(created());
+        getContext().become(created());
         logger.info("New post saved: {}", state.content().title());
     }
 
@@ -138,7 +125,7 @@ public final class Post extends AbstractPersistentActor {
 
     private void publishPost(PostPublished event) {
         state = state.updated(event);
-        context().become(published());
+        getContext().become(published());
     }
 
     private void handleEvent(Event event) {

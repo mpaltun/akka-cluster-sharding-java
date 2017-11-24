@@ -1,24 +1,19 @@
 package com.github.mpaltun.author;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.github.mpaltun.bot.ImmutableListPosts;
-
 import akka.actor.PoisonPill;
 import akka.actor.Props;
 import akka.actor.ReceiveTimeout;
 import akka.cluster.sharding.ShardRegion;
-import akka.japi.pf.ReceiveBuilder;
 import akka.persistence.AbstractPersistentActor;
-import scala.PartialFunction;
+import com.github.mpaltun.bot.ImmutableListPosts;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.concurrent.duration.Duration;
-import scala.runtime.BoxedUnit;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static java.util.concurrent.TimeUnit.MINUTES;
 
 public class AuthorListing extends AbstractPersistentActor {
 
@@ -33,14 +28,14 @@ public class AuthorListing extends AbstractPersistentActor {
     }
 
     @Override
-    public PartialFunction<Object, BoxedUnit> receiveRecover() {
-        return ReceiveBuilder.match(PostSummary.class, posts::add).build();
+    public Receive createReceiveRecover() {
+        return receiveBuilder().match(PostSummary.class, posts::add).build();
 
     }
 
     @Override
-    public PartialFunction<Object, BoxedUnit> receiveCommand() {
-        return ReceiveBuilder.match(PostSummary.class, this::handlePostSummary)
+    public Receive createReceive() {
+        return receiveBuilder().match(PostSummary.class, this::handlePostSummary)
                              .match(GetPosts.class, this::handleGetPosts)
                              .match(ReceiveTimeout.class, this::handleReceiveTimeout)
                              .build();
@@ -67,7 +62,7 @@ public class AuthorListing extends AbstractPersistentActor {
     }
 
     private void handleGetPosts(GetPosts request) {
-        sender().tell(ImmutableListPosts.of(posts), self());
+        getSender().tell(ImmutableListPosts.of(posts), self());
     }
 
     private void handleReceiveTimeout(ReceiveTimeout timeout) {
